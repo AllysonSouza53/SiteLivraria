@@ -1,10 +1,18 @@
 <?php
 require_once '../DAOGeral.php';
+require_once '../Helpers/Erros.php';
+
+use SiteLivraria\Helpers\Erros;
+use DAOGeral;
+use PDOException;
 
 class Categoria
 {
-    private ?int $id = null;
-    private ?string $descricao = null;
+    use Erros;
+
+    public ?int $Id = null;
+    public ?string $Descricao = null;
+    public array $rows = [];
 
     private DAOGeral $dao;
 
@@ -13,61 +21,80 @@ class Categoria
         $this->dao = new DAOGeral();
     }
 
-    public function setDescricao(string $descricao): void
+    public function setDescricao(string $Descricao): void
     {
-        $this->descricao = $descricao;
+        $this->Descricao = $Descricao;
     }
 
     public function getId(): ?int
     {
-        return $this->id;
+        return $this->Id;
     }
 
     public function getDescricao(): ?string
     {
-        return $this->descricao;
+        return $this->Descricao;
     }
 
-    // Método para salvar a categoria no banco de dados
     public function salvar(): bool
     {
-        $tabela = "categorias";  
-        $rotulos = "descricao";
-        $valores = [$this->descricao];
+        // Validação interna (caso queira reforçar)
+        if (!$this->Descricao || strlen($this->Descricao) < 3) {
+            $this->setError("A descrição deve conter ao menos 3 caracteres.");
+            return false;
+        }
 
-        return $this->dao->inserir($tabela, $rotulos, $valores);
+        try {
+            if ($this->Id === null) {
+                // Inserir
+                return $this->dao->inserir("Categorias", "Descricao", [$this->Descricao]);
+            } else {
+                // Atualizar
+                $campos = "Descricao = ?";
+                $condicao = "Id = ?";
+                $valores = [$this->Descricao, $this->Id];
+
+                return $this->dao->alterar("Categorias", $campos, $condicao, $valores);
+            }
+        } catch (PDOException $e) {
+            $this->setError("Erro ao salvar categoria: " . $e->getMessage());
+            return false;
+        }
     }
 
-    // Método para pesquisar uma categoria por ID
+
     public function pesquisarPorId(int $id): ?array
     {
-        $tabela = "categorias";
-        $rotulos = "*";
-        $condicao = "id = ?";
-        $valores = [$id];
-
-        $result = $this->dao->consultar($tabela, $rotulos, $condicao, $valores);
-        return $result ? $result[0] : null;
+        try {
+            $result = $this->dao->consultar("Categorias", "*", "Id = ?", [$id]);
+            return $result ? $result[0] : null;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar categoria: " . $e->getMessage());
+            return null;
+        }
     }
 
-    // Método para pesquisar todas as categorias
+
     public function pesquisarTudo(): array
     {
-        $tabela = "categorias";
-        $rotulos = "*";
-        $condicao = "1";  // busca todos os registros
-
-        return $this->dao->consultar($tabela, $rotulos, $condicao);
+        try {
+            $this->rows = $this->dao->consultar("Categorias", "*", "1");
+            return $this->rows;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar categorias: " . $e->getMessage());
+            return [];
+        }
     }
 
-    // Método para deletar uma categoria
+
     public function deletar(int $id): bool
     {
-        $tabela = "categorias";
-        $condicao = "id = ?";
-        $valores = [$id];
-
-        return $this->dao->deletar($tabela, $condicao, $valores);
+        try {
+            return $this->dao->deletar("Categorias", "Id = ?", [$id]);
+        } catch (PDOException $e) {
+            $this->setError("Erro ao excluir categoria: " . $e->getMessage());
+            return false;
+        }
     }
 }
 ?>

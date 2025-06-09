@@ -1,12 +1,21 @@
 <?php
+
 require_once '../DAOGeral.php';
+require_once '../Helpers/Erros.php';
+
+use SiteLivraria\Helpers\Erros;
+use DAOGeral;
+use PDOException;
 
 class Aluno
 {
-    private ?int $id = null;
-    private ?string $nome = null;
-    private ?string $ra = null;
-    private ?string $curso = null;
+    use Erros;
+
+    public ?int $Id = null;
+    public ?string $Nome = null;
+    public ?string $RA = null;
+    public ?string $Curso = null;
+    public array $rows = [];
 
     private DAOGeral $dao;
 
@@ -17,82 +26,107 @@ class Aluno
 
     public function setNome(string $nome): void
     {
-        if (strlen($nome) < 3) {
-            throw new Exception("Nome deve ter no mínimo 3 caracteres.");
-        }
-        $this->nome = $nome;
+        $this->Nome = $nome;
     }
 
     public function setRA(string $ra): void
     {
-        $this->ra = $ra;
+        $this->RA = $ra;
     }
 
     public function setCurso(string $curso): void
     {
-        $this->curso = $curso;
+        $this->Curso = $curso;
     }
 
     public function getId(): ?int
     {
-        return $this->id;
+        return $this->Id;
     }
 
     public function getNome(): ?string
     {
-        return $this->nome;
+        return $this->Nome;
     }
 
     public function getRA(): ?string
     {
-        return $this->ra;
+        return $this->RA;
     }
 
     public function getCurso(): ?string
     {
-        return $this->curso;
+        return $this->Curso;
     }
 
-    // Método para salvar o aluno no banco de dados
     public function salvar(): bool
     {
-        $tabela = "alunos";  // ajuste conforme o nome real da tabela
-        $rotulos = "nome, ra, curso";
-        $valores = [$this->nome, $this->ra, $this->curso];
+        if (!$this->Nome || strlen($this->Nome) < 3) {
+            $this->setError("Nome deve ter no mínimo 3 caracteres.");
+        }
 
-        return $this->dao->inserir($tabela, $rotulos, $valores);
+        if (!$this->RA || strlen($this->RA) < 3) {
+            $this->setError("RA inválido.");
+        }
+
+        if (!$this->Curso || strlen($this->Curso) < 3) {
+            $this->setError("Curso inválido.");
+        }
+
+        if ($this->hasErrors()) {
+            return false;
+        }
+
+        try {
+            if ($this->Id === null) {
+                return $this->dao->inserir("Alunos", "Nome, RA, Curso", [
+                    $this->Nome,
+                    $this->RA,
+                    $this->Curso
+                ]);
+            } else {
+                return $this->dao->alterar("Alunos", "Nome = ?, RA = ?, Curso = ?", "Id = ?", [
+                    $this->Nome,
+                    $this->RA,
+                    $this->Curso,
+                    $this->Id
+                ]);
+            }
+        } catch (PDOException $e) {
+            $this->setError("Erro ao salvar aluno: " . $e->getMessage());
+            return false;
+        }
     }
 
-    // Método para pesquisar um aluno por ID
     public function pesquisarPorId(int $id): ?array
     {
-        $tabela = "alunos";
-        $rotulos = "*";
-        $condicao = "id = ?";
-        $valores = [$id];
-
-        $result = $this->dao->consultar($tabela, $rotulos, $condicao, $valores);
-        return $result ? $result[0] : null;
+        try {
+            $result = $this->dao->consultar("Alunos", "*", "Id = ?", [$id]);
+            return $result ? $result[0] : null;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar aluno: " . $e->getMessage());
+            return null;
+        }
     }
 
-    // Método para pesquisar todos os alunos
     public function pesquisarTudo(): array
     {
-        $tabela = "alunos";
-        $rotulos = "*";
-        $condicao = "1";  // busca todos os registros
-
-        return $this->dao->consultar($tabela, $rotulos, $condicao);
+        try {
+            $this->rows = $this->dao->consultar("Alunos", "*", "1");
+            return $this->rows;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao listar alunos: " . $e->getMessage());
+            return [];
+        }
     }
 
-    // Método para deletar um aluno
     public function deletar(int $id): bool
     {
-        $tabela = "alunos";
-        $condicao = "id = ?";
-        $valores = [$id];
-
-        return $this->dao->deletar($tabela, $condicao, $valores);
+        try {
+            return $this->dao->deletar("Alunos", "Id = ?", [$id]);
+        } catch (PDOException $e) {
+            $this->setError("Erro ao excluir aluno: " . $e->getMessage());
+            return false;
+        }
     }
 }
-?>

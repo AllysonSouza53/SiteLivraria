@@ -1,8 +1,15 @@
 <?php
 require_once '../DAOGeral.php';
+require_once '../Helpers/Erros.php';
+
+use SiteLivraria\Helpers\Erros;
+use DAOGeral;
+use PDOException;
 
 class Emprestimo
 {
+    use Erros;
+
     public ?int $Id = null;
     public ?int $Id_Usuario = null;
     public ?int $Id_Livro = null;
@@ -16,6 +23,7 @@ class Emprestimo
 
     public array $rows_livros = [];
     public array $rows_alunos = [];
+    public array $rows = [];
 
     private DAOGeral $dao;
 
@@ -24,14 +32,14 @@ class Emprestimo
         $this->dao = new DAOGeral();
     }
 
-    public function setDataEmprestimo(string $DataEmprestimo): void
+    public function setDataEmprestimo(string $data): void
     {
-        $this->DataEmprestimo = $DataEmprestimo;
+        $this->DataEmprestimo = $data;
     }
 
-    public function setDataDevolucao(string $DataDevolucao): void
+    public function setDataDevolucao(string $data): void
     {
-        $this->DataDevolucao = $DataDevolucao;
+        $this->DataDevolucao = $data;
     }
 
     public function getId(): ?int
@@ -49,52 +57,81 @@ class Emprestimo
         return $this->DataDevolucao;
     }
 
-    // Método para salvar o empréstimo no banco de dados
     public function salvar(): bool
     {
-        $tabela = "Emprestimos";
-        $rotulos = "Id_Usuario, Id_Livro, Id_Aluno, DataEmprestimo, DataDevolucao";
-        $valores = [
-            $this->Id_Usuario,
-            $this->Id_Livro,
-            $this->Id_Aluno,
-            $this->DataEmprestimo,
-            $this->DataDevolucao
-        ];
+        if (!$this->Id_Usuario) $this->setError("Usuário responsável não informado.");
+        if (!$this->Id_Livro) $this->setError("Livro é obrigatório.");
+        if (!$this->Id_Aluno) $this->setError("Aluno é obrigatório.");
+        if (!$this->DataEmprestimo) $this->setError("Data de empréstimo é obrigatória.");
+        if (!$this->DataDevolucao) $this->setError("Data de devolução é obrigatória.");
 
-        return $this->dao->inserir($tabela, $rotulos, $valores);
+        if ($this->hasErrors()) {
+            return false;
+        }
+
+        try {
+            if ($this->Id === null) {
+                return $this->dao->inserir(
+                    "Emprestimos",
+                    "Id_Usuario, Id_Livro, Id_Aluno, DataEmprestimo, DataDevolucao",
+                    [
+                        $this->Id_Usuario,
+                        $this->Id_Livro,
+                        $this->Id_Aluno,
+                        $this->DataEmprestimo,
+                        $this->DataDevolucao
+                    ]
+                );
+            } else {
+                return $this->dao->alterar(
+                    "Emprestimos",
+                    "Id_Usuario = ?, Id_Livro = ?, Id_Aluno = ?, DataEmprestimo = ?, DataDevolucao = ?",
+                    "Id = ?",
+                    [
+                        $this->Id_Usuario,
+                        $this->Id_Livro,
+                        $this->Id_Aluno,
+                        $this->DataEmprestimo,
+                        $this->DataDevolucao,
+                        $this->Id
+                    ]
+                );
+            }
+        } catch (PDOException $e) {
+            $this->setError("Erro ao salvar empréstimo: " . $e->getMessage());
+            return false;
+        }
     }
 
-    // Método para pesquisar um empréstimo por ID
     public function pesquisarPorId(int $id): ?array
     {
-        $tabela = "Emprestimos";
-        $rotulos = "*";
-        $condicao = "Id = ?";
-        $valores = [$id];
-
-        $result = $this->dao->consultar($tabela, $rotulos, $condicao, $valores);
-        return $result ? $result[0] : null;
+        try {
+            $result = $this->dao->consultar("Emprestimos", "*", "Id = ?", [$id]);
+            return $result ? $result[0] : null;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar empréstimo: " . $e->getMessage());
+            return null;
+        }
     }
 
-    // Método para pesquisar todos os empréstimos
     public function pesquisarTudo(): array
     {
-        $tabela = "Emprestimos";
-        $rotulos = "*";
-        $condicao = "1";  // busca todos os registros
-
-        return $this->dao->consultar($tabela, $rotulos, $condicao);
+        try {
+            $this->rows = $this->dao->consultar("Emprestimos", "*", "1");
+            return $this->rows;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar empréstimos: " . $e->getMessage());
+            return [];
+        }
     }
 
-    // Método para deletar um empréstimo
     public function deletar(int $id): bool
     {
-        $tabela = "Emprestimos";
-        $condicao = "Id = ?";
-        $valores = [$id];
-
-        return $this->dao->deletar($tabela, $condicao, $valores);
+        try {
+            return $this->dao->deletar("Emprestimos", "Id = ?", [$id]);
+        } catch (PDOException $e) {
+            $this->setError("Erro ao excluir empréstimo: " . $e->getMessage());
+            return false;
+        }
     }
 }
-?>

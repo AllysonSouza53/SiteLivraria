@@ -1,6 +1,6 @@
 <?php
 
-trait ErrorHandler
+trait Erros
 {
     
     private array $errors = [];

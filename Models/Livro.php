@@ -1,8 +1,15 @@
 <?php
 require_once '../DAOGeral.php';
+require_once '../Helpers/Erros.php';
+
+use SiteLivraria\Helpers\Erros;
+use DAOGeral;
+use PDOException;
 
 class Livro
 {
+    use Erros;
+
     public ?int $Id = null;
 
     public array $rows_categorias = [];
@@ -16,7 +23,7 @@ class Livro
     private ?string $Editora = null;
     private ?string $Ano = null;
 
-    private array $rows = [];
+    public array $rows = [];
 
     private DAOGeral $dao;
 
@@ -25,13 +32,13 @@ class Livro
         $this->dao = new DAOGeral();
     }
 
-    // Validações nos setters
     public function setTitulo(string $titulo): void
     {
         if (strlen($titulo) < 3) {
-            throw new Exception("Título deve ter no mínimo 3 caracteres.");
+            $this->setError("Título deve ter no mínimo 3 caracteres.");
+        } else {
+            $this->Titulo = $titulo;
         }
-        $this->Titulo = $titulo;
     }
 
     public function getTitulo(): ?string
@@ -42,9 +49,10 @@ class Livro
     public function setIsbn(string $isbn): void
     {
         if (strlen($isbn) < 3) {
-            throw new Exception("ISBN deve ter no mínimo 3 caracteres.");
+            $this->setError("ISBN deve ter no mínimo 3 caracteres.");
+        } else {
+            $this->Isbn = $isbn;
         }
-        $this->Isbn = $isbn;
     }
 
     public function getIsbn(): ?string
@@ -55,9 +63,10 @@ class Livro
     public function setEditora(string $editora): void
     {
         if (strlen($editora) < 3) {
-            throw new Exception("Editora deve ter no mínimo 3 caracteres.");
+            $this->setError("Editora deve ter no mínimo 3 caracteres.");
+        } else {
+            $this->Editora = $editora;
         }
-        $this->Editora = $editora;
     }
 
     public function getEditora(): ?string
@@ -68,9 +77,10 @@ class Livro
     public function setAno(string $ano): void
     {
         if (strlen($ano) < 3) {
-            throw new Exception("Ano deve ter no mínimo 3 caracteres.");
+            $this->setError("Ano deve ter no mínimo 3 caracteres.");
+        } else {
+            $this->Ano = $ano;
         }
-        $this->Ano = $ano;
     }
 
     public function getAno(): ?string
@@ -78,53 +88,66 @@ class Livro
         return $this->Ano;
     }
 
-    // Método para salvar o livro
     public function salvar(): bool
     {
-        $tabela = "Livros";
-        $rotulos = "Titulo, Isbn, Editora, Ano, Id_Categoria";
-        $valores = [
-            $this->Titulo,
-            $this->Isbn,
-            $this->Editora,
-            $this->Ano,
-            $this->Id_Categoria
-        ];
+        if (!$this->Titulo) $this->setError("Título é obrigatório.");
+        if (!$this->Isbn) $this->setError("ISBN é obrigatório.");
+        if (!$this->Editora) $this->setError("Editora é obrigatória.");
+        if (!$this->Ano) $this->setError("Ano é obrigatório.");
+        if (!$this->Id_Categoria) $this->setError("Categoria é obrigatória.");
+        if (!is_array($this->Id_Autores) || count($this->Id_Autores) === 0) {
+            $this->setError("Pelo menos um autor deve ser selecionado.");
+        }
 
-        return $this->dao->inserir($tabela, $rotulos, $valores);
+        if ($this->hasErrors()) return false;
+
+        try {
+            return $this->dao->inserir(
+                "Livros",
+                "Titulo, Isbn, Editora, Ano, Id_Categoria",
+                [
+                    $this->Titulo,
+                    $this->Isbn,
+                    $this->Editora,
+                    $this->Ano,
+                    $this->Id_Categoria
+                ]
+            );
+        } catch (PDOException $e) {
+            $this->setError("Erro ao salvar livro: " . $e->getMessage());
+            return false;
+        }
     }
 
-    // Método para buscar um livro por ID
     public function pesquisarPorId(int $id): ?array
     {
-        $tabela = "Livros";
-        $rotulos = "*";
-        $condicao = "Id = ?";
-        $valores = [$id];
-
-        $result = $this->dao->consultar($tabela, $rotulos, $condicao, $valores);
-        return $result ? $result[0] : null;
+        try {
+            $result = $this->dao->consultar("Livros", "*", "Id = ?", [$id]);
+            return $result ? $result[0] : null;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar livro: " . $e->getMessage());
+            return null;
+        }
     }
 
-    // Método para retornar todos os livros
     public function pesquisarTudo(): array
     {
-        $tabela = "Livros";
-        $rotulos = "*";
-        $condicao = "1"; // retorna todos
-
-        $this->rows = $this->dao->consultar($tabela, $rotulos, $condicao);
-        return $this->rows;
+        try {
+            $this->rows = $this->dao->consultar("Livros", "*", "1");
+            return $this->rows;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar livros: " . $e->getMessage());
+            return [];
+        }
     }
 
-    // Método para deletar livro
     public function deletar(int $id): bool
     {
-        $tabela = "Livros";
-        $condicao = "Id = ?";
-        $valores = [$id];
-
-        return $this->dao->deletar($tabela, $condicao, $valores);
+        try {
+            return $this->dao->deletar("Livros", "Id = ?", [$id]);
+        } catch (PDOException $e) {
+            $this->setError("Erro ao excluir livro: " . $e->getMessage());
+            return false;
+        }
     }
 }
-?>

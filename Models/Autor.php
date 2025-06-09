@@ -1,12 +1,22 @@
 <?php
+
 require_once '../DAOGeral.php';
+require_once '../Helpers/Erros.php';
+
+use SiteLivraria\Helpers\Erros;
+use DAOGeral;
+use PDOException;
 
 class Autor
 {
-    private ?int $id = null;
-    private ?string $nome = null;
-    private ?string $DataNascimento = null;
-    private ?string $CPF = null;
+    use Erros;
+
+    public ?int $Id = null;
+    public ?string $Nome = null;
+    public ?string $DataNascimento = null;
+    public ?string $CPF = null;
+
+    public array $rows = [];
 
     private DAOGeral $dao;
 
@@ -17,33 +27,30 @@ class Autor
 
     public function setNome(string $nome): void
     {
-        if (strlen($nome) < 3) {
-            throw new Exception("Nome deve ter no mínimo 3 caracteres.");
-        }
-        $this->nome = $nome;
+        $this->Nome = $nome;
     }
 
-    public function setDataNasc(string $DataNascimento): void
+    public function setDataNascimento(string $data): void
     {
-        $this->DataNascimento = $DataNascimento;
+        $this->DataNascimento = $data;
     }
 
-    public function setCPF(string $CPF): void
+    public function setCPF(string $cpf): void
     {
-        $this->CPF = $CPF;
+        $this->CPF = $cpf;
     }
 
     public function getId(): ?int
     {
-        return $this->id;
+        return $this->Id;
     }
 
     public function getNome(): ?string
     {
-        return $this->nome;
+        return $this->Nome;
     }
 
-    public function getDataNasc(): ?string
+    public function getDataNascimento(): ?string
     {
         return $this->DataNascimento;
     }
@@ -53,46 +60,74 @@ class Autor
         return $this->CPF;
     }
 
-    // Método para salvar o aluno no banco de dados
     public function salvar(): bool
     {
-        $tabela = "autores";  // ajuste conforme o nome real da tabela
-        $rotulos = "nome, datanasc, CPF";
-        $valores = [$this->nome, $this->DataNascimento, $this->CPF];
+        if (!$this->Nome || strlen($this->Nome) < 3) {
+            $this->setError("Nome deve ter no mínimo 3 caracteres.");
+        }
 
-        return $this->dao->inserir($tabela, $rotulos, $valores);
+        if (!$this->DataNascimento) {
+            $this->setError("Data de nascimento é obrigatória.");
+        }
+
+        if (!preg_match('/^\d{11}$/', $this->CPF ?? '')) {
+            $this->setError("CPF inválido. Deve conter 11 dígitos numéricos.");
+        }
+
+        if ($this->hasErrors()) {
+            return false;
+        }
+
+        try {
+            if ($this->Id === null) {
+                return $this->dao->inserir("autores", "nome, datanasc, cpf", [
+                    $this->Nome,
+                    $this->DataNascimento,
+                    $this->CPF
+                ]);
+            } else {
+                return $this->dao->alterar("autores", "nome = ?, datanasc = ?, cpf = ?", "id = ?", [
+                    $this->Nome,
+                    $this->DataNascimento,
+                    $this->CPF,
+                    $this->Id
+                ]);
+            }
+        } catch (PDOException $e) {
+            $this->setError("Erro ao salvar autor: " . $e->getMessage());
+            return false;
+        }
     }
 
-    // Método para pesquisar um aluno por ID
     public function pesquisarPorId(int $id): ?array
     {
-        $tabela = "autores";
-        $rotulos = "*";
-        $condicao = "id = ?";
-        $valores = [$id];
-
-        $result = $this->dao->consultar($tabela, $rotulos, $condicao, $valores);
-        return $result ? $result[0] : null;
+        try {
+            $result = $this->dao->consultar("autores", "*", "id = ?", [$id]);
+            return $result ? $result[0] : null;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao buscar autor: " . $e->getMessage());
+            return null;
+        }
     }
 
-    // Método para pesquisar todos os alunos
     public function pesquisarTudo(): array
     {
-        $tabela = "autores";
-        $rotulos = "*";
-        $condicao = "1";  // busca todos os registros
-
-        return $this->dao->consultar($tabela, $rotulos, $condicao);
+        try {
+            $this->rows = $this->dao->consultar("autores", "*", "1");
+            return $this->rows;
+        } catch (PDOException $e) {
+            $this->setError("Erro ao listar autores: " . $e->getMessage());
+            return [];
+        }
     }
 
-    // Método para deletar um aluno
     public function deletar(int $id): bool
     {
-        $tabela = "autores";
-        $condicao = "id = ?";
-        $valores = [$id];
-
-        return $this->dao->deletar($tabela, $condicao, $valores);
+        try {
+            return $this->dao->deletar("autores", "id = ?", [$id]);
+        } catch (PDOException $e) {
+            $this->setError("Erro ao excluir autor: " . $e->getMessage());
+            return false;
+        }
     }
 }
-?>
