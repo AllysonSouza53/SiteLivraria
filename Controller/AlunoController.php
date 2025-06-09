@@ -1,7 +1,5 @@
 <?php
 
-namespace App\Controller;
-
 use SiteLivraria\Models\Aluno;
 use Exception;
 
