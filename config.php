@@ -1,11 +1,11 @@
 <?php
 
 define ('BASE_DIR', dirname (__FILE__, 2));
-define('VIEWS', BASE_DIR . '/App/View');
+define('VIEWS', BASE_DIR . '/SiteLivraria/Views');
 
- $_ENV['db']['host'] = "localhost:3307";
+ $_ENV['db']['host'] = "localhost";
  $_ENV['db']['user'] = "root";
- $_ENV['db']['pass'] = "etecjau";
- $_ENV['db']['database'] = "biblioteca";
+ $_ENV['db']['pass'] = "";
+ $_ENV['db']['database'] = "livraria";
  
  ?>

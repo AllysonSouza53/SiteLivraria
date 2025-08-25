@@ -1,7 +1,7 @@
 <?php
-class BancoDados {
+class DAOGeral {
     private $host = "localhost";
-    private $dbName = "";  // Coloque o nome do banco aqui
+    private $dbName = "livraria";  
     private $username = "root";
     private $password = "";
     private $conexao;

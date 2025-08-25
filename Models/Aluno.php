@@ -1,11 +1,8 @@
 <?php
 
-require_once '../DAO/DAOGeral.php';
-require_once '../Helpers/Erros.php';
+require_once 'D:\www\231026\SiteLivraria\DAO\DAOGeral.php';
+require_once 'D:\www\231026\SiteLivraria\Helpers\Erros.php';
 
-use SiteLivraria\Helpers\Erros;
-use DAOGeral;
-use PDOException;
 
 class Aluno
 {

@@ -18,7 +18,7 @@ trait Erros
     /**
      * Retorna os erros como lista HTML formatada.
      *
-     * @return string Lista de erros formatada em <ul>.
+     * @return string 
      */
     public function getErrors(): string
     {
